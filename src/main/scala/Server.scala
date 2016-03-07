@@ -80,6 +80,8 @@ object Server extends App {
     QueryParser.parse(query) match {
       case Success(queryAst) ⇒
         queryAst.operationType(operation) match {
+
+          // subscription queries will produce `text/event-stream` response
           case Some(OperationType.Subscription) ⇒
             complete(
               executor.prepare(queryAst, ctx, (), operation, variables)
@@ -89,6 +91,7 @@ object Server extends App {
                   case error: ErrorWithResolver ⇒ ToResponseMarshallable(InternalServerError → error.resolveError)
                 })
 
+          // all other queries will just return normal JSON response
           case _ ⇒
             complete(executor.execute(queryAst, ctx, (), operation, variables)
               .map(OK → _)
