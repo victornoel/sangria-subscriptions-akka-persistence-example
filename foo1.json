@@ -1,0 +1,3 @@
+{
+  "query": "subscription AuthorEvents {authorCreated {id, version} authorNameChanged {id, version} authorDeleted {id version}}"
+}

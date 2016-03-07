@@ -1,0 +1,3 @@
+{
+  "query": "subscription { authorCreated { id version firstName } articleCreated { id version title } }"
+}
