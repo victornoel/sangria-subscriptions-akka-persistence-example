@@ -39,7 +39,7 @@ If client makes a `subscription` query, then server will respond with `text/even
 
 Here is an example of interation between client and server where one client subscribes to an event and another client makes a mutation that produces this type of events:
 
-![Event-stream based subscriptions](http://olegilyenko.github.io/reactive-ecommerce-api-design/assets/img/client-server.svg)
+![Client-server interaction](http://olegilyenko.github.io/reactive-ecommerce-api-design/assets/img/client-server.svg)
 
 Since `EventSource` always makes a `GET` request to a SSE endpoint, I added support for `GET` method on `/graphql` endpoint. It takes a GraphQL query as a query parameter.
 
@@ -58,6 +58,111 @@ mutation NewText {
 Each client will first read an article and then make some decision based on the returned result. Let's say that they both have decided to update the article in different ways. In order to perform the mutation they both need to tell server which version of article they based their decision on. Thanks to version server is able to detect a conflict and only successfully perform one mutation, rejecting the other one:   
 
 ![Optimistic concurrency control](http://olegilyenko.github.io/reactive-ecommerce-api-design/assets/img/optimistic-sangria.svg)
+
+## GraphQL subscription semantics
+
+In this particular application a top-level fields on the `Subscription` type represent all available event types. Client only gets events that it subscribed to. For example, given following subscription:
+
+```js
+subscription NewAuthors {
+  authorCreated {
+    id
+    version
+    firstName
+    lastName
+  }
+}
+```
+
+and mutations:
+
+```
+mutation {
+  createAuthor(firstName: "John", lastName: "Doe") {
+    id, version
+  }
+}
+
+mutation {
+  changeAuthorName(
+    id: "b4dd3963-3fdd-4d7a-8105-c33dfc7ddffc", 
+    version: 1, 
+    firstName: "Jane", 
+    lastName: "Doe") {id, version}
+}
+
+mutation {
+  deleteAuthor(id: "b4dd3963-3fdd-4d7a-8105-c33dfc7ddffc", version: 2) {
+    firstName
+    lastName
+  }
+}
+```
+
+client will only get following event:
+
+```json
+{
+  "data": {
+    "authorCreated": {
+      "id": "b4dd3963-3fdd-4d7a-8105-c33dfc7ddffc",
+      "version": 1,
+      "firstName": "John",
+      "lastName": "Doe"
+    }
+  }
+}
+```
+
+### Multi-field subscriptions
+
+Clint can also subscribe to multiple events. For example:
+
+```js
+subscription {
+  authorCreated {
+    id
+    version
+    firstName
+    lastName
+  }
+  
+  authorDeleted {
+    id
+    version
+  }
+}
+```
+
+Given the 3 mutation queries mentioned above, client will get following events:
+
+```json
+{
+  "data": {
+    "authorCreated": {
+      "id": "b4dd3963-3fdd-4d7a-8105-c33dfc7ddffc",
+      "version": 1,
+      "firstName": "John",
+      "lastName": "Doe"
+    },
+    "authorDeleted": null
+  }
+}
+
+{
+  "data": {
+   "authorCreated": null,
+    "authorDeleted": {
+      "id": "b4dd3963-3fdd-4d7a-8105-c33dfc7ddffc",
+      "version": 3
+    }
+  }
+}
+```
+
+As you can see, at any given time client can only get 1 event. All other subscription fields would be `null`.
+
+I also would like to mention, that this semantics is pretty arbitrary. GraphQL specification does not define semantics for subscription queries at the moment - it's still under active discussion. So you can treat semantics, that is defined in this example application, more as an experiment rather that a recommended way of doing things ;) 
 
 ## Feedback
 
