@@ -39,7 +39,7 @@ If client makes a `subscription` query, then server will respond with `text/even
 
 Here is an example of interation between client and server where one client subscribes to an event and another client makes a mutation that produces this type of events:
 
-![Event-stream based subscriptions](http://olegilyenko.github.io/reactive-ecommerce-api-design/assets/img/graphq-subscription-4.svg)
+![Event-stream based subscriptions](http://olegilyenko.github.io/reactive-ecommerce-api-design/assets/img/client-server.svg)
 
 Since `EventSource` always makes a `GET` request to a SSE endpoint, I added support for `GET` method on `/graphql` endpoint. It takes a GraphQL query as a query parameter.
 
