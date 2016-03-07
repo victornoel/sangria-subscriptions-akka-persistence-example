@@ -31,9 +31,17 @@ I also described this approach in much more detail here:
 
 [Event-stream based GraphQL subscriptions](https://gist.github.com/OlegIlyenko/a5a9ab1b000ba0b5b1ad)
 
-If client makes a `subscription` query, then server will respond with `text/event-stream`. For any other query type server will respond with normal JSON reponse.
-
 Please not that this particular example is intended to demonstrate different concepts (in particular GraphQL subscriptions), so it does not have any persistence. This means that `MemoryEventStore` and views keep all of the data in memory.   
+
+## Client-server interaction
+
+If client makes a `subscription` query, then server will respond with `text/event-stream`. For any other query type server will respond with normal JSON reponse. 
+
+Here is an example of interation between client and server where one client subscribes to an event and another client makes a mutation that produces this type of events:
+
+![Event-stream based subscriptions](http://olegilyenko.github.io/reactive-ecommerce-api-design/assets/img/graphq-subscription-4.svg)
+
+Since `EventSource` always makes a `GET` request to a SSE endpoint, I added support for `GET` method on `/graphql` endpoint. It takes a GraphQL query as a query parameter.
 
 ## Optimistic concurrency control
 
