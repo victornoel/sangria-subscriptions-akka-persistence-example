@@ -25,7 +25,7 @@ After you started the server, you can point your browser to following URLs:
 
 High-level picture looks like this:
  
-![Event-stream based subscriptions](http://olegilyenko.github.io/reactive-ecommerce-api-design/assets/img/graphq-subscription-3.svg)
+![Event-stream based subscriptions](http://olegilyenko.github.io/reactive-ecommerce-api-design/assets/img/graphq-subscription-4.svg)
 
 I also described this approach in much more detail here:
 
