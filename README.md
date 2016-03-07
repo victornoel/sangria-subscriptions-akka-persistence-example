@@ -76,7 +76,7 @@ subscription NewAuthors {
 
 and mutations:
 
-```
+```js
 mutation {
   createAuthor(firstName: "John", lastName: "Doe") {
     id, version
