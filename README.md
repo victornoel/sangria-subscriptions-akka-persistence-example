@@ -14,7 +14,7 @@ The only prerequisites are [SBT](http://www.scala-sbt.org/download.html) and [Ja
 sbt run
 ```
 
-If you would like to experiment and change code youseld, then better alternative would be an [sbt-revolver](https://github.com/spray/sbt-revolver) which is already available in the project. You just need yo run `sbt ~reStart` and it will compile abd restart the server on every change.
+If you would like to experiment and change code youself, then better alternative would be an [sbt-revolver](https://github.com/spray/sbt-revolver) plugin which is already available in the project. You just need yo run `sbt ~reStart` and it will automatically compile and restart the server on every change.
    
 After you started the server, you can point your browser to following URLs:
  
