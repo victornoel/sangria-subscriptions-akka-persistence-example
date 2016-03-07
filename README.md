@@ -1,10 +1,10 @@
-An example of GraphQL akka-http server with SSE-based subscriptions. It features:
+An example of GraphQL akka-http server with SSE-based subscriptions powered by [sangria](http://sangria-graphql.org/). It features:
 
 * Implementation based on CQRS (Command Query Responsibility Segregation) + event-sourcing 
-* Server Sent Events subscription queries based on akka-streams and akka-sse
+* Server Sent Events subscriptions based on akka-streams and akka-sse
 * Optimistic concurrency control for mutation queries
 
-This example is pretty rough around the edges at the moment (and uses snapshot version of sangria). Subscriptions support in GraphQL and well as sangria is still in experimental phase, so expect big changes and improvements in near future. This also means that your feedback is important and very welcome ;)  
+This example is pretty rough around the edges at the moment (and uses snapshot version of sangria). Subscriptions support in GraphQL and well as sangria is still in experimental phase, so expect big changes and improvements in near future (especially around the way subscriptions are implemented). This also means that your feedback is important and very welcome ;)
 
 ## How to start
 
@@ -31,13 +31,13 @@ I also described this approach in much more detail here:
 
 [Event-stream based GraphQL subscriptions](https://gist.github.com/OlegIlyenko/a5a9ab1b000ba0b5b1ad)
 
-Please not that this particular example does not have persistence, this means that `MemoryEventStore` and views keep all of the data in memory.   
+Please not that this particular example is intended to demonstrate different concepts (in particular GraphQL subscriptions), so it does not have any persistence. This means that `MemoryEventStore` and views keep all of the data in memory.   
 
 ## Optimistic concurrency control
 
-I find optimistic concurrency control pretty important for this kind of architecture. So I decided to include it in this example application, even though it add a bit of complexity.
+I find optimistic concurrency control pretty important for this kind of architecture. So I decided to include it in this example application, even though it adds a bit of complexity.
 
-This pattern helps clients to detect conflicts when they are doing mutations. Imagine that two clients would like to change an articale at the same time with GraphQL query like this:
+This pattern helps clients to detect conflicts when they are doing mutations. Imagine that two clients would like to change an article at the same time with GraphQL query like this:
   
 ```js
 mutation NewText {
@@ -45,7 +45,7 @@ mutation NewText {
 }
 ```
 
-Each client will first read an article and then make some decision based on the returned article. Let's say that they both have decided to updated an article in different ways. In order to perform the mutation they both need to tell server which version of article that based their decision on. Thanks to version server is able to detect a conflict and only successfully perform one mutation, rejecting the other one:   
+Each client will first read an article and then make some decision based on the returned result. Let's say that they both have decided to update the article in different ways. In order to perform the mutation they both need to tell server which version of article they based their decision on. Thanks to version server is able to detect a conflict and only successfully perform one mutation, rejecting the other one:   
 
 ![Optimistic concurrency control](http://olegilyenko.github.io/reactive-ecommerce-api-design/assets/img/optimistic-sangria.svg)
 
