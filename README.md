@@ -31,6 +31,8 @@ I also described this approach in much more detail here:
 
 [Event-stream based GraphQL subscriptions](https://gist.github.com/OlegIlyenko/a5a9ab1b000ba0b5b1ad)
 
+If client makes a `subscription` query, then server will respond with `text/event-stream`. For any other query type server will respond with normal JSON reponse.
+
 Please not that this particular example is intended to demonstrate different concepts (in particular GraphQL subscriptions), so it does not have any persistence. This means that `MemoryEventStore` and views keep all of the data in memory.   
 
 ## Optimistic concurrency control
