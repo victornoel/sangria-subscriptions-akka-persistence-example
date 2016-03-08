@@ -151,7 +151,7 @@ Given the 3 mutation queries mentioned above, client will get following events:
 
 {
   "data": {
-   "authorCreated": null,
+    "authorCreated": null,
     "authorDeleted": {
       "id": "b4dd3963-3fdd-4d7a-8105-c33dfc7ddffc",
       "version": 3
