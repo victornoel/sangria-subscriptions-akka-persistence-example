@@ -7,7 +7,7 @@ scalaVersion := "2.11.7"
 scalacOptions ++= Seq("-deprecation", "-feature")
 
 libraryDependencies ++= Seq(
-  "org.sangria-graphql" %% "sangria" % "0.5.3-SNAPSHOT",
+  "org.sangria-graphql" %% "sangria" % "0.6.0-SNAPSHOT",
   "org.sangria-graphql" %% "sangria-spray-json" % "0.2.0",
 
   "com.typesafe.akka" %% "akka-http-experimental" % "2.4.2",

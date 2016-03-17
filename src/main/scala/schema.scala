@@ -1,11 +1,10 @@
-import java.util.UUID
-
 import akka.actor.ActorRef
 import akka.util.Timeout
 import generic.{Event, View, Versioned}
 import generic.View.Get
 import sangria.execution.UserFacingError
 import sangria.schema._
+import sangria.macros.derive._
 import akka.pattern.ask
 
 import scala.annotation.unchecked.uncheckedVariance
@@ -28,37 +27,13 @@ object schema {
     Field("id", StringType, resolve = _.value.id),
     Field("version", LongType, resolve = _.value.version)))
 
-  val AuthorCreatedType = ObjectType(
-    "AuthorCreated",
-    interfaces[Unit, AuthorCreated](EventType),
-    fields[Unit, AuthorCreated](
-      Field("firstName", StringType, resolve = _.value.firstName),
-      Field("lastName", StringType, resolve = _.value.lastName)))
+  val AuthorCreatedType = deriveObjectType[Unit, AuthorCreated](Interfaces(EventType))
+  val AuthorNameChangedType = deriveObjectType[Unit, AuthorNameChanged](Interfaces(EventType))
+  val AuthorDeletedType = deriveObjectType[Unit, AuthorDeleted](Interfaces(EventType))
 
-  val AuthorNameChangedType = ObjectType(
-    "AuthorNameChanged",
-    interfaces[Unit, AuthorNameChanged](EventType),
-    fields[Unit, AuthorNameChanged](
-      Field("firstName", StringType, resolve = _.value.firstName),
-      Field("lastName", StringType, resolve = _.value.lastName)))
-
-  val AuthorDeletedType = ObjectType("AuthorDeleted", interfaces[Unit, AuthorDeleted](EventType), Nil)
-
-  val ArticleCreatedType = ObjectType(
-    "ArticleCreated",
-    interfaces[Unit, ArticleCreated](EventType),
-    fields[Unit, ArticleCreated](
-      Field("title", StringType, resolve = _.value.title),
-      Field("authorId", StringType, resolve = _.value.authorId),
-      Field("text", OptionType(StringType), resolve = _.value.text)))
-
-  val ArticleTextChangedType = ObjectType(
-    "ArticleTextChanged",
-    interfaces[Unit, ArticleTextChanged](EventType),
-    fields[Unit, ArticleTextChanged](
-      Field("text", OptionType(StringType), resolve = _.value.text)))
-
-  val ArticleDeletedType = ObjectType("ArticleDeleted", interfaces[Unit, ArticleDeleted](EventType), Nil)
+  val ArticleCreatedType = deriveObjectType[Unit, ArticleCreated](Interfaces(EventType))
+  val ArticleTextChangedType = deriveObjectType[Unit, ArticleTextChanged](Interfaces(EventType))
+  val ArticleDeletedType = deriveObjectType[Unit, ArticleDeleted](Interfaces(EventType))
 
   val SubscriptionFields = ListMap[String, SubscriptionField[Event]](
     "authorCreated" → SubscriptionField(AuthorCreatedType),
@@ -76,19 +51,14 @@ object schema {
       Field("id", StringType, resolve = _.value.id),
       Field("version", LongType, resolve = _.value.version)))
 
-    val AuthorType = ObjectType("Author", interfaces[Unit, Author](VersionedType), fields[Unit, Author](
-      Field("firstName", StringType, resolve = _.value.firstName),
-      Field("lastName", StringType, resolve = _.value.lastName)))
+    implicit val AuthorType = deriveObjectType[Unit, Author](Interfaces(VersionedType))
 
-    val ArticleType = ObjectType("Article", interfaces[Ctx, Article](VersionedType), fields[Ctx, Article](
-      Field("title", StringType, resolve = _.value.title),
-      Field("author", OptionType(AuthorType), resolve = c ⇒
-        (c.ctx.authors ? Get(c.value.authorId)).mapTo[Option[Author]]),
-      Field("text", OptionType(StringType), resolve = _.value.text)))
+    implicit val ArticleType = deriveObjectType[Ctx, Article](
+      Interfaces(VersionedType),
+      OverrideField("authorId", Field("author", OptionType(AuthorType), resolve = c ⇒
+        (c.ctx.authors ? Get(c.value.authorId)).mapTo[Option[Author]])))
 
     val IdArg = Argument("id", StringType)
-    val VersionArg = Argument("version", LongType)
-
     val OffsetArg = Argument("offset", OptionInputType(IntType), 0)
     val LimitArg = Argument("limit", OptionInputType(IntType), 100)
 
@@ -104,61 +74,7 @@ object schema {
       entityFields[Author]("author", AuthorType, _.authors) ++
       entityFields[Article]("article", ArticleType, _.articles))
 
-    val FirstNameArg = Argument("firstName", StringType)
-    val LastNameArg = Argument("lastName", StringType)
-
-    val TitleArg = Argument("title", StringType)
-    val AuthorIdArg = Argument("authorId", StringType)
-    val TextArg = Argument("text", OptionInputType(StringType))
-
-    val MutationType = ObjectType("Mutation", fields[Ctx, Any](
-      Field("createAuthor", OptionType(AuthorType),
-        arguments = FirstNameArg :: LastNameArg :: Nil,
-        resolve = c ⇒
-          c.ctx.addEvent[Author](c.ctx.authors,
-            AuthorCreated(UUID.randomUUID.toString, 1, c.arg(FirstNameArg), c.arg(LastNameArg)))),
-
-      Field("changeAuthorName", OptionType(AuthorType),
-        arguments = IdArg :: VersionArg :: FirstNameArg :: LastNameArg :: Nil,
-        resolve = c ⇒
-          c.ctx.loadLatestVersion(c.arg(IdArg), c.arg(VersionArg)) flatMap (version ⇒
-            c.ctx.addEvent[Author](c.ctx.authors,
-              AuthorNameChanged(c.arg(IdArg), version, c.arg(FirstNameArg), c.arg(LastNameArg))))),
-
-      Field("deleteAuthor", OptionType(AuthorType),
-        arguments = IdArg :: VersionArg :: Nil,
-        resolve = c ⇒
-            for {
-              version ← c.ctx.loadLatestVersion(c.arg(IdArg), c.arg(VersionArg))
-              author ← (c.ctx.authors ? Get(c.arg(IdArg))).mapTo[Option[Author]]
-              _ ← c.ctx.addDeleteEvent(AuthorDeleted(c.arg(IdArg), version))
-            } yield author),
-
-      Field("createArticle", OptionType(ArticleType),
-        arguments = TitleArg :: AuthorIdArg :: TextArg :: Nil,
-        resolve = c ⇒ (c.ctx.authors ? Get(c.arg(AuthorIdArg))) flatMap {
-          case Some(author: Author) ⇒
-            c.ctx.addEvent[Article](c.ctx.articles,
-              ArticleCreated(UUID.randomUUID.toString, 1, c.arg(TitleArg), author.id, c.arg(TextArg)))
-          case _ ⇒
-            throw MutationError(s"Author with ID '${c.arg(AuthorIdArg)}' does not exist.")
-        }),
-
-      Field("changeArticleText", OptionType(ArticleType),
-        arguments = IdArg :: VersionArg :: TextArg :: Nil,
-        resolve = c ⇒
-          c.ctx.loadLatestVersion(c.arg(IdArg), c.arg(VersionArg)) flatMap (version ⇒
-            c.ctx.addEvent[Article](c.ctx.articles,
-              ArticleTextChanged(c.arg(IdArg), version, c.arg(TextArg))))),
-
-      Field("deleteArticle", OptionType(ArticleType),
-        arguments = IdArg :: VersionArg :: Nil,
-        resolve = c ⇒
-          for {
-            version ← c.ctx.loadLatestVersion(c.arg(IdArg), c.arg(VersionArg))
-            author ← (c.ctx.articles ? Get(c.arg(IdArg))).mapTo[Option[Article]]
-            _ ← c.ctx.addDeleteEvent(ArticleDeleted(c.arg(IdArg), version))
-          } yield author)))
+    val MutationType = deriveContextObjectType[Ctx, Mutation, Any](identity)
 
     val SubscriptionType = ObjectType("Subscription",
       SubscriptionFields.toList.map { case (name, field) ⇒

@@ -9,8 +9,11 @@ import akka.pattern.ask
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class Ctx(authors: ActorRef, articles: ActorRef, eventStore: ActorRef) {
-  def addEvent[T](view: ActorRef, event: Event)(implicit timeout: Timeout, ec: ExecutionContext) =
+case class Ctx(authors: ActorRef, articles: ActorRef, eventStore: ActorRef, ec: ExecutionContext, to: Timeout) extends Mutation {
+  implicit def executionContext = ec
+  implicit def timeout = to
+
+  def addEvent[T](view: ActorRef, event: Event) =
     (eventStore ? AddEvent(event)).flatMap {
       case EventAdded(_) ⇒
         (view ? Get(event.id, Some(event.version))).mapTo[Option[T]]
@@ -20,7 +23,7 @@ case class Ctx(authors: ActorRef, articles: ActorRef, eventStore: ActorRef) {
         throw MutationError(s"Concurrent Modification error for entity '${event.id}'. Latest entity version is '$latestVersion'.")
     }
 
-  def addDeleteEvent(event: Event)(implicit timeout: Timeout, ec: ExecutionContext) =
+  def addDeleteEvent(event: Event) =
     (eventStore ? AddEvent(event)).map {
       case EventAdded(e) ⇒  e
       case OverCapacity(_) ⇒
@@ -29,7 +32,7 @@ case class Ctx(authors: ActorRef, articles: ActorRef, eventStore: ActorRef) {
         throw MutationError(s"Concurrent Modification error for entity '${event.id}'. Latest entity version is '$latestVersion'.")
     }
 
-  def loadLatestVersion(id: String, version: Long)(implicit timeout: Timeout, ec: ExecutionContext): Future[Long] =
+  def loadLatestVersion(id: String, version: Long): Future[Long] =
     (eventStore ? LatestEventVersion(id)) map {
       case Some(latestVersion: Long) if version != latestVersion ⇒
         throw MutationError(s"Concurrent Modification error for entity '$id'. Latest entity version is '$latestVersion'.")
