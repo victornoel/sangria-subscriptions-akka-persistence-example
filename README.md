@@ -4,7 +4,7 @@ An example of GraphQL akka-http server with SSE-based subscriptions powered by [
 * Server Sent Events subscriptions based on akka-streams and akka-sse
 * Optimistic concurrency control for mutation queries
 
-This example is pretty rough around the edges at the moment (and uses snapshot version of sangria). Subscriptions support in GraphQL and well as sangria is still in experimental phase, so expect big changes and improvements in near future (especially around the way subscriptions are implemented). This also means that your feedback is important and very welcome ;)
+This example is pretty rough around the edges at the moment. Subscriptions support in GraphQL and well as sangria is still in experimental phase, so expect big changes and improvements in near future (especially around the way subscriptions are implemented). This also means that your feedback is important and very welcome ;)
 
 ## How to start
 
