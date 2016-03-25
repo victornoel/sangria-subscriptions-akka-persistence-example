@@ -36,6 +36,10 @@
         width: 100%;
         overflow: hidden;
       }
+
+      #graphiql {
+        height: 100vh;
+      }
     </style>
 
     <link rel="stylesheet" href="//cdn.jsdelivr.net/graphiql/0.6.3/graphiql.css" />
@@ -45,7 +49,8 @@
     <script src="//cdn.jsdelivr.net/graphiql/0.6.3/graphiql.min.js"></script>
   </head>
   <body>
-    Loading...
+    <div id="graphiql">Loading...</div>
+
     <script>
 
       /**
@@ -129,7 +134,7 @@
           onEditQuery: onEditQuery,
           onEditVariables: onEditVariables
         }),
-        document.body
+        document.getElementById('graphiql')
       );
     </script>
   </body>

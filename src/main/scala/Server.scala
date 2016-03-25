@@ -11,13 +11,13 @@ import spray.json._
 
 import akka.http.scaladsl.model.StatusCodes._
 import akka.stream.actor.{ActorSubscriber, ActorPublisher}
-import akka.util.{ByteString, Timeout}
+import akka.util.Timeout
 import akka.actor.{Props, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.stream.{OverflowStrategy, ActorMaterializer}
-import akka.stream.scaladsl.{Framing, Sink, Source}
+import akka.stream.scaladsl.{Sink, Source}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.event.Logging
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
@@ -119,7 +119,7 @@ object Server extends App {
 
         val JsString(query) = fields("query")
 
-        val operation = fields.get("operation") collect {
+        val operation = fields.get("operationName") collect {
           case JsString(op) ⇒ op
         }
 
