@@ -55,7 +55,7 @@ object schema {
 
     implicit val ArticleType = deriveObjectType[Ctx, Article](
       Interfaces(VersionedType),
-      OverrideField("authorId", Field("author", OptionType(AuthorType), resolve = c ⇒
+      ReplaceField("authorId", Field("author", OptionType(AuthorType), resolve = c ⇒
         (c.ctx.authors ? Get(c.value.authorId)).mapTo[Option[Author]])))
 
     val IdArg = Argument("id", StringType)
