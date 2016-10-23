@@ -6,6 +6,8 @@ An example of GraphQL akka-http server with SSE-based subscriptions powered by [
 
 This example is pretty rough around the edges at the moment. Subscriptions support in GraphQL and well as sangria is still in experimental phase, so expect big changes and improvements in near future (especially around the way subscriptions are implemented). This also means that your feedback is important and very welcome ;)
 
+You can find a WebSocket example in a [separate branch](https://github.com/OlegIlyenko/sangria-subscriptions-example/tree/trbngr-websockets).
+
 ## How to start
 
 The only prerequisites are [SBT](http://www.scala-sbt.org/download.html) and [Java 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html). After you cloned the project, you need to run an application with SBT:
