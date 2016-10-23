@@ -37,6 +37,8 @@ abstract class View[Entity <: Versioned, Ev <: Event] extends ActorSubscriber wi
       sender() ! entities.values.slice(offset, offset + limit)
     case Get(id, None) ⇒
       sender() ! entities.get(id)
+    case GetMany(ids) ⇒
+      sender() ! entities.collect{case (key, value) if ids.contains(key) ⇒ value}.toVector
     case Get(id, Some(version)) ⇒
       entities.get(id) match {
         case Some(entity) if entity.version == version ⇒
@@ -76,6 +78,7 @@ abstract class View[Entity <: Versioned, Ev <: Event] extends ActorSubscriber wi
 object View {
   case class List(offset: Int, limit: Int)
   case class Get(id: String, version: Option[Long] = None)
+  case class GetMany(ids: Seq[String])
 
   private case class RemoveWaiting(key: (String, Long))
 }
