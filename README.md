@@ -23,7 +23,7 @@ After you started the server, you can point your browser to following URLs:
 * [http://localhost:8080](http://localhost:8080) - GraphiQL UI
 * [http://localhost:8080/client](http://localhost:8080/client) - Simple Server Sent Events GraphQL client that will stream events based on subscription query. 
 
-## High-level picture
+## High-level overview
 
 High-level picture looks like this:
  
@@ -146,14 +146,12 @@ Given the 3 mutation queries mentioned above, client will get following events:
       "version": 1,
       "firstName": "John",
       "lastName": "Doe"
-    },
-    "authorDeleted": null
+    }
   }
 }
 
 {
   "data": {
-    "authorCreated": null,
     "authorDeleted": {
       "id": "b4dd3963-3fdd-4d7a-8105-c33dfc7ddffc",
       "version": 3
