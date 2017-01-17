@@ -71,7 +71,7 @@ object schema {
         resolve = (c: Context[Ctx, Unit]) ⇒
           c.ctx.eventStream
             .filter(event ⇒ tpe.valClass.isAssignableFrom(event.getClass))
-            .map(event ⇒ action(event.asInstanceOf[T])))
+            .map(event ⇒ Action(event.asInstanceOf[T])))
     }
 
     val SubscriptionType = ObjectType("Subscription", fields[Ctx, Unit](
@@ -81,7 +81,7 @@ object schema {
       subscriptionField(ArticleCreatedType),
       subscriptionField(ArticleTextChangedType),
       subscriptionField(ArticleDeletedType),
-      Field.subs("allEvents", EventType, resolve = _.ctx.eventStream.map(action(_)))
+      Field.subs("allEvents", EventType, resolve = _.ctx.eventStream.map(Action(_)))
     ))
 
     Schema(QueryType, Some(MutationType), Some(SubscriptionType))
