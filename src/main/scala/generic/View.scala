@@ -1,16 +1,13 @@
 package generic
 
-import language.postfixOps
-
-import akka.actor.{ActorLogging, ActorRef}
-import akka.stream.actor.{OneByOneRequestStrategy, ActorSubscriber}
-
-import akka.stream.actor.ActorSubscriberMessage._
+import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.stream.actor.OneByOneRequestStrategy
 
 import scala.collection.immutable.ListMap
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
-abstract class View[Entity <: Versioned, Ev <: Event] extends ActorSubscriber with ActorLogging {
+abstract class View[Entity <: Versioned, Ev <: Event] extends Actor with ActorLogging {
   import View._
 
   private var entities = ListMap.empty[String, Entity]
@@ -19,15 +16,19 @@ abstract class View[Entity <: Versioned, Ev <: Event] extends ActorSubscriber wi
   import context.dispatcher
 
   def receive = {
-    case OnNext(event: Event) if handleEvent.isDefinedAt(event.asInstanceOf[Ev]) ⇒
-      handleEvent(event.asInstanceOf[Ev])
+    case Init ⇒ sender() ! Ack
+    case event: Event ⇒
+      if (handleEvent.isDefinedAt(event.asInstanceOf[Ev])) {
+        handleEvent(event.asInstanceOf[Ev])
 
-      val waitingKey = event.id → event.version
+        val waitingKey = event.id → event.version
 
-      waiting.get(waitingKey) foreach { senderRef ⇒
-        senderRef ! entities.get(event.id)
-        waiting = waiting.filterNot(_._1 == waitingKey)
+        waiting.get(waitingKey) foreach { senderRef ⇒
+          senderRef ! entities.get(event.id)
+          waiting = waiting.filterNot(_._1 == waitingKey)
+        }
       }
+      sender() ! Ack
     case RemoveWaiting(key) ⇒
       waiting.get(key) foreach { senderRef ⇒
         senderRef ! None
@@ -81,4 +82,7 @@ object View {
   case class GetMany(ids: Seq[String])
 
   private case class RemoveWaiting(key: (String, Long))
+
+  case object Ack
+  case object Init
 }

@@ -7,7 +7,7 @@ An example of GraphQL akka-http server with SSE-based subscriptions powered by [
 
 This example is pretty rough around the edges at the moment. Subscriptions support in GraphQL and well as sangria is still in experimental phase, so expect big changes and improvements in near future (especially around the way subscriptions are implemented). This also means that your feedback is important and very welcome ;)
 
-You can find a WebSocket example in a [separate branch](https://github.com/sangria-graphql/sangria-subscriptions-example/tree/trbngr-websockets).
+This implementation is a fork of [sangria-graphql/sangria-subscriptions-example](https://github.com/sangria-graphql/sangria-subscriptions-example) with Akka Persistence for implementing the event store and Akka Persistence Query to produces views from it.
 
 ## How to start
 

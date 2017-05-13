@@ -1,36 +1,38 @@
 import akka.NotUsed
-import akka.util.Timeout
-import schema.MutationError
 import akka.actor.ActorRef
-import generic.Event
-import generic.MemoryEventStore._
-import generic.View.{Get, GetMany}
 import akka.pattern.ask
 import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.Source
-import org.reactivestreams.Publisher
+import akka.util.Timeout
+import generic.Event
+import generic.PersistentEventStore._
+import generic.View.{Get, GetMany}
+import schema.MutationError
 
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.postfixOps
 
 case class Ctx(
   authors: ActorRef,
   articles: ActorRef,
   eventStore: ActorRef,
-  eventStorePublisher: Publisher[Event],
+  events: Source[Event, NotUsed],
   ec: ExecutionContext,
   to: Timeout
 ) extends Mutation {
   implicit def executionContext = ec
   implicit def timeout = to
 
+  // TODO why buffer?
   lazy val eventStream: Source[Event, NotUsed] =
-    Source.fromPublisher(eventStorePublisher).buffer(100, OverflowStrategy.fail)
+    events.buffer(100, OverflowStrategy.fail).backpressureTimeout(3 seconds)
 
   def addEvent[T](view: ActorRef, event: Event) =
     (eventStore ? AddEvent(event)).flatMap {
       case EventAdded(_) ⇒
         (view ? Get(event.id, Some(event.version))).mapTo[Option[T]]
-      case OverCapacity(_) ⇒
+      case OverCapacity ⇒
         throw MutationError("Service is overloaded.")
       case ConcurrentModification(_, latestVersion) ⇒
         throw MutationError(s"Concurrent Modification error for entity '${event.id}'. Latest entity version is '$latestVersion'.")
@@ -38,8 +40,8 @@ case class Ctx(
 
   def addDeleteEvent(event: Event) =
     (eventStore ? AddEvent(event)).map {
-      case EventAdded(e) ⇒  e
-      case OverCapacity(_) ⇒
+      case EventAdded(e) ⇒ e
+      case OverCapacity ⇒
         throw MutationError("Service is overloaded.")
       case ConcurrentModification(_, latestVersion) ⇒
         throw MutationError(s"Concurrent Modification error for entity '${event.id}'. Latest entity version is '$latestVersion'.")

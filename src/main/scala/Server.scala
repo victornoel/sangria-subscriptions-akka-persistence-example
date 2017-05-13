@@ -1,27 +1,30 @@
-import language.postfixOps
-import generic.{Event, MemoryEventStore}
-import sangria.ast.OperationType
-import sangria.execution.{ErrorWithResolver, Executor, QueryAnalysisError}
-import sangria.parser.{QueryParser, SyntaxError}
-import sangria.marshalling.sprayJson._
-import spray.json._
-import akka.http.scaladsl.model.StatusCodes._
-import akka.stream.actor.{ActorPublisher, ActorSubscriber}
-import akka.util.Timeout
-import akka.actor.{ActorSystem, Props}
+import akka.NotUsed
+import akka.actor.{ActorRef, ActorSystem, PoisonPill, Props}
+import akka.event.Logging
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
+import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
+import akka.persistence.query.PersistenceQuery
+import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Sink, Source}
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import akka.event.Logging
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import de.heikoseeberger.akkasse._
+import akka.stream.scaladsl.{Broadcast, BroadcastHub, Flow, Keep, Sink}
+import akka.util.Timeout
 import de.heikoseeberger.akkasse.EventStreamMarshalling._
+import de.heikoseeberger.akkasse._
+import generic.{Event, PersistentEventStore, View}
+import sangria.ast.OperationType
 import sangria.execution.deferred.DeferredResolver
+import sangria.execution.{ErrorWithResolver, Executor, QueryAnalysisError}
+import sangria.marshalling.sprayJson._
+import sangria.parser.{QueryParser, SyntaxError}
+import spray.json._
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
+import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
@@ -32,27 +35,32 @@ object Server extends App {
 
   import system.dispatcher
 
+  private def viewSink[T <: Event: ClassTag](view: ActorRef): Sink[Event, NotUsed] = {
+    Flow[Event].collect{ case e: T ⇒ e}.to(Sink.actorRefWithAck(view, View.Init, View.Ack, PoisonPill))
+  }
+
   implicit val timeout = Timeout(10 seconds)
 
   val articlesView = system.actorOf(Props[ArticleView])
-  val articlesSink = Sink.fromSubscriber(ActorSubscriber[ArticleEvent](articlesView))
-
   val authorsView = system.actorOf(Props[AuthorView])
-  val authorsSink = Sink.fromSubscriber(ActorSubscriber[AuthorEvent](authorsView))
+  val eventStore = system.actorOf(Props[PersistentEventStore])
 
-  val eventStore = system.actorOf(Props[MemoryEventStore])
-  val eventStorePublisher =
-    Source.fromPublisher(ActorPublisher[Event](eventStore))
-      .runWith(Sink.asPublisher(fanout = true))
+  // until the first subscriber is attached, events will be bufferized
+  val events = PersistenceQuery(system)
+    .readJournalFor[LeveldbReadJournal](LeveldbReadJournal.Identifier)
+    .eventsByPersistenceId(PersistentEventStore.storeId, 0L, Long.MaxValue)
+    .map(_.event.asInstanceOf[Event])
+    .toMat(BroadcastHub.sink)(Keep.right).run()
 
-  // Connect event store to views
-  Source.fromPublisher(eventStorePublisher).collect{case event: ArticleEvent ⇒ event}.to(articlesSink).run()
-  Source.fromPublisher(eventStorePublisher).collect{case event: AuthorEvent ⇒ event}.to(authorsSink).run()
+  // first subscriber are both of the views (with one sink to be sure both get all events)
+  Sink
+    .combine(viewSink[AuthorEvent](authorsView), viewSink[ArticleEvent](articlesView))(Broadcast[Event](_))
+    .runWith(events)
 
   val executor = Executor(schema.createSchema, deferredResolver = DeferredResolver.fetchers(schema.authors))
 
-  def executeQuery(query: String, operation: Option[String], variables: JsObject = JsObject.empty) = {
-    val ctx = Ctx(authorsView, articlesView, eventStore, eventStorePublisher, system.dispatcher, timeout)
+  def executeQuery(query: String, operation: Option[String], variables: JsObject = JsObject.empty): Route = {
+    val ctx = Ctx(authorsView, articlesView, eventStore, events, system.dispatcher, timeout)
 
     QueryParser.parse(query) match {
       // Query is parsed successfully, let's execute it
