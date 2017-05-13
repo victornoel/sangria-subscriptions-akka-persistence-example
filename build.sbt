@@ -11,6 +11,11 @@ libraryDependencies ++= Seq(
   "org.sangria-graphql" %% "sangria-spray-json" % "1.0.0",
   "org.sangria-graphql" %% "sangria-akka-streams" % "1.0.0",
 
+  "com.typesafe.akka" %% "akka-persistence" % "2.5.1",
+  "com.typesafe.akka" %% "akka-persistence-query" % "2.5.1",
+
+  "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8",
+
   "com.typesafe.akka" %% "akka-http" % "10.0.6",
   "com.typesafe.akka" %% "akka-http-spray-json" % "10.0.6",
   "de.heikoseeberger" %% "akka-sse" % "2.0.0",
