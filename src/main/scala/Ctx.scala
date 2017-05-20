@@ -7,7 +7,6 @@ import akka.util.Timeout
 import generic.Event
 import generic.MemoryEventStore._
 import generic.View.{Get, GetMany}
-import org.reactivestreams.Publisher
 import schema.MutationError
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,7 +15,7 @@ case class Ctx(
   authors: ActorRef,
   articles: ActorRef,
   eventStore: ActorRef,
-  eventStorePublisher: Publisher[Event],
+  events: Source[Event, NotUsed],
   ec: ExecutionContext,
   to: Timeout
 ) extends Mutation {
@@ -26,7 +25,7 @@ case class Ctx(
   // this ensure that slow subscribers does not slow down other subscribers
   // by buffering the events that arrive too fast
   lazy val eventStream: Source[Event, NotUsed] =
-    Source.fromPublisher(eventStorePublisher).buffer(100, OverflowStrategy.fail)
+    events.buffer(100, OverflowStrategy.fail)
 
   def addEvent[T](view: ActorRef, event: Event) =
     (eventStore ? AddEvent(event)).flatMap {
