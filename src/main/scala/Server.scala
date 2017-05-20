@@ -7,12 +7,12 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
-import akka.stream.actor.{ActorPublisher, ActorSubscriber}
-import akka.stream.scaladsl.{BroadcastHub, Keep, Sink, Source}
+import akka.stream.actor.ActorPublisher
+import akka.stream.scaladsl.{BroadcastHub, Keep, Source}
 import akka.util.Timeout
 import de.heikoseeberger.akkasse.EventStreamMarshalling._
 import de.heikoseeberger.akkasse._
-import generic.{Event, MemoryEventStore}
+import generic.{Event, MemoryEventStore, View}
 import sangria.ast.OperationType
 import sangria.execution.deferred.DeferredResolver
 import sangria.execution.{ErrorWithResolver, Executor, QueryAnalysisError}
@@ -35,11 +35,7 @@ object Server extends App {
   implicit val timeout = Timeout(10 seconds)
 
   val articlesView = system.actorOf(Props[ArticleView])
-  val articlesSink = Sink.fromSubscriber(ActorSubscriber[ArticleEvent](articlesView))
-
   val authorsView = system.actorOf(Props[AuthorView])
-  val authorsSink = Sink.fromSubscriber(ActorSubscriber[AuthorEvent](authorsView))
-
   val eventStore = system.actorOf(Props[MemoryEventStore])
 
   // this a stream with an actor as a source
@@ -49,8 +45,8 @@ object Server extends App {
     .toMat(BroadcastHub.sink)(Keep.right).run()
 
   // Connect event store to views
-  events.collect{case event: ArticleEvent ⇒ event}.to(articlesSink).run()
-  events.collect{case event: AuthorEvent ⇒ event}.to(authorsSink).run()
+  View.asSink(articlesView).runWith(events)
+  View.asSink(authorsView).runWith(events)
 
   val executor = Executor(schema.createSchema, deferredResolver = DeferredResolver.fetchers(schema.authors))
 
@@ -136,5 +132,5 @@ object Server extends App {
       getFromResource("web/graphiql.html")
     }
 
-  Http().bindAndHandle(route, "0.0.0.0", 8080)
+  Http().bindAndHandle(route, "0.0.0.0", 8084)
 }
